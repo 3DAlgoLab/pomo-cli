@@ -1,8 +1,16 @@
 """Countdown timer with milestones, bell, and SIGINT handling."""
 
+import os
 import signal
 import sys
 import time
+
+
+def _dim(text: str) -> str:
+    """Wrap text in ANSI dim escape codes if output supports it."""
+    if not sys.stdout.isatty() or os.environ.get("NO_COLOR"):
+        return text
+    return f"\033[2m{text}\033[0m"
 
 
 def run_session(label: str, duration_minutes: float) -> None:
@@ -42,7 +50,8 @@ def run_session(label: str, duration_minutes: float) -> None:
 
             # Milestone: every 5 minutes elapsed (remaining is multiple of 300, < total, > 0)
             if remaining > 0 and remaining % 300 == 0:
-                print(f"\n[Milestone] {remaining // 60} minutes remaining")
+                msg = f"[Milestone] {remaining // 60} minutes remaining"
+                print(f"\n{_dim(msg)}")
 
         # Session complete
         print("\a", end="", flush=True)
