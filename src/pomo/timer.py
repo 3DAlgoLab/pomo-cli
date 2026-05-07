@@ -53,7 +53,8 @@ def run_session(label: str, duration_minutes: float) -> None:
                 msg = f"[Milestone] {remaining // 60} minutes remaining"
                 print(f"\n{_dim(msg)}")
 
-        # Session complete
+        # Session complete — clear the countdown line first
+        print()
         print("\a", end="", flush=True)
         print(f"Session complete! {label} — {duration_minutes:g} min.")
     finally:
