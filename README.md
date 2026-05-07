@@ -1,6 +1,9 @@
 # 🍅 pomo — SSH-friendly CLI Pomodoro Timer
 
-A minimal, terminal-native pomodoro timer built for **SSH sessions**. No curses, no TUI dependencies — just carriage-return countdowns that work over any connection.
+A minimal, terminal-native pomodoro timer built for **SSH sessions**. No curses, no TUI dependencies — just 
+carriage-return countdowns that work over any connection.
+
+![pomo cli captured](pomo-capture.png)
 
 ## Features
 
@@ -31,13 +34,13 @@ pomo config        # show current settings
 
 ### Commands
 
-| Command | Description |
-|---------|-------------|
-| `pomo work` | Start a focused work session |
-| `pomo break` | Take a short break |
-| `pomo long-break` | Take an extended break |
-| `pomo cycle` | Run the complete pomodoro cycle automatically |
-| `pomo config` | Display your current configuration |
+| Command           | Description                                   |
+| ----------------- | --------------------------------------------- |
+| `pomo work`       | Start a focused work session                  |
+| `pomo break`      | Take a short break                            |
+| `pomo long-break` | Take an extended break                        |
+| `pomo cycle`      | Run the complete pomodoro cycle automatically |
+| `pomo config`     | Display your current configuration            |
 
 ### Override Durations
 

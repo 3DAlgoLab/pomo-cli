@@ -3,6 +3,12 @@
 import argparse
 import sys
 
+try:
+    from importlib.metadata import version
+    __version__ = version("pomo")
+except Exception:
+    __version__ = "unknown"
+
 from pomo.art import print_banner
 from pomo.config import Config
 from pomo.timer import run_session
@@ -14,6 +20,7 @@ def main(argv=None):
         prog="pomo", description="SSH-friendly CLI pomodoro timer"
     )
     parser.add_argument("--config", default=None, help="Path to config file")
+    parser.add_argument("--version", action="version", version=f"pomo {__version__}")
 
     subparsers = parser.add_subparsers(dest="command")
 
