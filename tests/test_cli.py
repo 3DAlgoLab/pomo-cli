@@ -24,12 +24,13 @@ def test_work_uses_config_duration(monkeypatch):
     assert run_mock.call_count == 1
     call_kwargs = run_mock.call_args[1]
     assert call_kwargs["duration_minutes"] == 25  # default work duration
+    assert call_kwargs["dim"] is False
 
 
 # ── case 16: `pomo break` invokes timer with short_break duration ───
 
 def test_break_uses_short_break_duration(monkeypatch):
-    """Case 16 — 'break' subcommand passes short_break duration."""
+    """Case 16 — 'break' subcommand passes short_break duration with dim=True."""
     run_mock = MagicMock()
     monkeypatch.setattr("pomo.cli.run_session", run_mock)
 
@@ -37,13 +38,14 @@ def test_break_uses_short_break_duration(monkeypatch):
 
     assert run_mock.call_count == 1
     call_kwargs = run_mock.call_args[1]
-    assert call_kwargs["duration_minutes"] == 5  # default short_break
+    assert call_kwargs["duration_minutes"] == 5
+    assert call_kwargs["dim"] is True
 
 
 # ── case 17: `pomo long-break` invokes timer with long_break duration ─
 
 def test_long_break_uses_long_break_duration(monkeypatch):
-    """Case 17 — 'long-break' subcommand passes long_break duration."""
+    """Case 17 — 'long-break' subcommand passes long_break duration with dim=True."""
     run_mock = MagicMock()
     monkeypatch.setattr("pomo.cli.run_session", run_mock)
 
@@ -51,7 +53,8 @@ def test_long_break_uses_long_break_duration(monkeypatch):
 
     assert run_mock.call_count == 1
     call_kwargs = run_mock.call_args[1]
-    assert call_kwargs["duration_minutes"] == 15  # default long_break
+    assert call_kwargs["duration_minutes"] == 15
+    assert call_kwargs["dim"] is True
 
 
 # ── case 18: `pomo --minutes N` overrides duration ──────────────────
@@ -66,6 +69,7 @@ def test_minutes_flag_overrides_duration(monkeypatch):
     assert run_mock.call_count == 1
     call_kwargs = run_mock.call_args[1]
     assert call_kwargs["duration_minutes"] == 10
+    assert call_kwargs["dim"] is False
 
 
 # ── case 19: `pomo cycle` runs full pomodoro cycle ───────────────────
@@ -82,6 +86,11 @@ def test_cycle_runs_full_pomodoro_sequence(monkeypatch):
     durations = [c[1]["duration_minutes"] for c in run_mock.call_args_list]
     expected = [25, 5, 25, 5, 25, 5, 25, 15]
     assert durations == expected
+
+    # Breaks should have dim=True, work sessions dim=False
+    dims = [c[1]["dim"] for c in run_mock.call_args_list]
+    expected_dims = [False, True, False, True, False, True, False, True]
+    assert dims == expected_dims
 
 
 # ── case 20: `pomo config` prints effective configuration ────────────

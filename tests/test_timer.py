@@ -112,3 +112,26 @@ def test_one_minute_session():
     assert len(sleep_calls) == 60
 
 
+# ── case 15: Break sessions display dimmed countdown ─────────────────
+
+def test_break_session_applies_dim(capsys):
+    """Case 15 — dim=True wraps countdown in ANSI dim codes."""
+    with patch("pomo.timer.time.sleep", return_value=None):
+        with patch("sys.stdout.isatty", return_value=True):
+            run_session(label="Short break", duration_minutes=0.05, dim=True)
+
+    out = capsys.readouterr().out
+    # ANSI dim code is \033[2m
+    assert "\033[2m" in out, f"Expected dim escape in output, got: {repr(out)}"
+
+
+def test_work_session_no_dim(capsys):
+    """Work sessions (dim=False, default) should not have ANSI dim codes."""
+    with patch("pomo.timer.time.sleep", return_value=None):
+        with patch("sys.stdout.isatty", return_value=True):
+            run_session(label="Work session", duration_minutes=0.05)
+
+    out = capsys.readouterr().out
+    assert "\033[2m" not in out, f"Unexpected dim escape in work output: {repr(out)}"
+
+

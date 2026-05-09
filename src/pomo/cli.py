@@ -71,15 +71,15 @@ def main(argv=None):
 
     if args.command == "work":
         duration = args.minutes if args.minutes is not None else cfg.work
-        run_session(label="Work session", duration_minutes=duration)
+        run_session(label="Work session", duration_minutes=duration, dim=False)
 
     elif args.command == "break":
         duration = args.minutes if args.minutes is not None else cfg.short_break
-        run_session(label="Short break", duration_minutes=duration)
+        run_session(label="Short break", duration_minutes=duration, dim=True)
 
     elif args.command == "long-break":
         duration = args.minutes if args.minutes is not None else cfg.long_break
-        run_session(label="Long break", duration_minutes=duration)
+        run_session(label="Long break", duration_minutes=duration, dim=True)
 
     elif args.command == "cycle":
         n = cfg.sessions_before_long
@@ -92,12 +92,12 @@ def main(argv=None):
         for i in range(n):
             print_banner(i + 1)
             print()
-            run_session(label=f"Work session {i + 1}", duration_minutes=work_dur)
+            run_session(label=f"Work session {i + 1}", duration_minutes=work_dur, dim=False)
             if i < n - 1:
                 run_session(
-                    label="Short break", duration_minutes=short_dur
+                    label="Short break", duration_minutes=short_dur, dim=True
                 )
-        run_session(label="Long break", duration_minutes=long_dur)
+        run_session(label="Long break", duration_minutes=long_dur, dim=True)
 
     elif args.command == "config":
         print(f"work: {cfg.work} min")

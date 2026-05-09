@@ -13,7 +13,7 @@ def _dim(text: str) -> str:
     return f"\033[2m{text}\033[0m"
 
 
-def run_session(label: str, duration_minutes: float) -> None:
+def run_session(label: str, duration_minutes: float, dim: bool = False) -> None:
     """Run a timed session with countdown display.
 
     Args:
@@ -42,7 +42,8 @@ def run_session(label: str, duration_minutes: float) -> None:
         while remaining > 0:
             mm = remaining // 60
             ss = remaining % 60
-            print(f"\r{label}: {mm:02d}:{ss:02d} remaining", end="", flush=True)
+            line = f"{label}: {mm:02d}:{ss:02d} remaining"
+            print(f"\r{_dim(line) if dim else line}", end="", flush=True)
 
             time.sleep(1)
             elapsed += 1
