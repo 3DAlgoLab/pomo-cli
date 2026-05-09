@@ -4,13 +4,9 @@ Verifies countdown duration, display format, milestones, session-end output,
 SIGINT handling, and edge-case durations.
 """
 
-import os
 import signal
-import sys
-from io import StringIO
 from unittest.mock import patch
 
-import pytest
 
 # ── imports under test ────────────────────────────────────────────────
 from pomo.timer import run_session

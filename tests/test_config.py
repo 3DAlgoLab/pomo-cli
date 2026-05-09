@@ -4,11 +4,8 @@ Verifies default loading, TOML parsing, CLI flag overrides, partial configs,
 custom paths, and graceful error handling.
 """
 
-import os
-from pathlib import Path
 from textwrap import dedent
 
-import pytest
 
 # ── imports under test ────────────────────────────────────────────────
 from pomo.config import Config

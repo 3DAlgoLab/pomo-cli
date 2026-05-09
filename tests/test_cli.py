@@ -4,7 +4,7 @@ Verifies subcommand routing, duration overrides, cycle execution, config
 display, and unknown-subcommand behaviour.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
