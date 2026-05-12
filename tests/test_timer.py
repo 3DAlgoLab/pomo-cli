@@ -5,6 +5,7 @@ SIGINT handling, and edge-case durations.
 """
 
 import signal
+import termios
 from unittest.mock import patch
 
 
@@ -133,5 +134,34 @@ def test_work_session_no_dim(capsys):
 
     out = capsys.readouterr().out
     assert "\033[2m" not in out, f"Unexpected dim escape in work output: {repr(out)}"
+
+
+def test_session_disables_echo():
+    """Session should disable terminal echo to suppress key clutter."""
+    tcsetattr_called = []
+
+    def fake_tcsetattr(fd, when, args):
+        tcsetattr_called.append((fd, when, args))
+
+    # Simulate a real TTY with ECHO enabled (LFLAG index 3)
+    fake_attrs = [0, 0, 0, termios.ECHO]
+
+    with patch("pomo.timer.time.sleep", return_value=None):
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("termios.tcsetattr", side_effect=fake_tcsetattr):
+                with patch("termios.tcgetattr", return_value=fake_attrs):
+                    with patch("termios.tcdrain"):
+                        run_session(label="Work session", duration_minutes=0.05)
+
+    # tcsetattr: once to disable ECHO, once at end to restore
+    assert len(tcsetattr_called) == 2, f"Expected 2 tcsetattr calls, got {len(tcsetattr_called)}"
+    # First call should have ECHO cleared
+    first_args = tcsetattr_called[0][2]
+    assert not (first_args[3] & termios.ECHO), "ECHO should be disabled"
+    # Second call should restore original attrs (ECHO back on)
+    second_args = tcsetattr_called[1][2]
+    assert second_args == fake_attrs, "Original attrs should be restored"
+
+
 
 

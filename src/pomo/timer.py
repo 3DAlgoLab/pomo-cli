@@ -4,6 +4,7 @@ import os
 import signal
 import sys
 import time
+import termios
 
 
 def _dim(text: str) -> str:
@@ -33,10 +34,17 @@ def run_session(label: str, duration_minutes: float, dim: bool = False) -> None:
     def sigint_handler(signum, _frame):
         mm = elapsed // 60
         ss = elapsed % 60
-        print(f"Session aborted. Elapsed: {mm:02d}:{ss:02d}")
+        print(f"\nSession aborted. Elapsed: {mm:02d}:{ss:02d}")
         sys.exit(1)
 
     old_handler = signal.signal(signal.SIGINT, sigint_handler)
+    # Disable terminal echo so random keystrokes don't clutter the display
+    _old_tty = None
+    if sys.stdin.isatty():
+        _old_tty = termios.tcgetattr(sys.stdin)
+        attrs = list(_old_tty)
+        attrs[3] &= ~termios.ECHO  # turn off ECHO, keep ISIG (Ctrl+C) intact
+        termios.tcsetattr(sys.stdin, termios.TCSANOW, attrs)
 
     try:
         while remaining > 0:
@@ -60,3 +68,7 @@ def run_session(label: str, duration_minutes: float, dim: bool = False) -> None:
         print(f"Session complete! {label} — {duration_minutes:g} min.")
     finally:
         signal.signal(signal.SIGINT, old_handler)
+        # Restore terminal and flush stale keystrokes
+        if _old_tty is not None:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, _old_tty)
+            termios.tcdrain(sys.stdin)
