@@ -1,11 +1,16 @@
 """Countdown timer with milestones, bell, SIGINT handling, and pause (Space)."""
 
 import os
-import select
 import signal
 import sys
 import time
-import termios
+
+IS_WINDOWS = sys.platform == "win32"
+if IS_WINDOWS:
+    import msvcrt
+else:
+    import select
+    import termios
 
 
 def _dim(text: str) -> str:
@@ -41,22 +46,25 @@ def run_session(label: str, duration_minutes: float, dim: bool = False) -> None:
 
     old_sigint = signal.signal(signal.SIGINT, sigint_handler)
 
-    # Terminal setup: disable ECHO + ICANON so keystrokes are available
-    # immediately via select(), but keep ISIG so Ctrl+C still works.
+    # Terminal setup: Unix uses termios for raw mode; Windows uses msvcrt
+    # (no raw mode needed — msvcrt.kbhit/getch work in cooked mode).
     _old_tty = None
     _tty_mode = sys.stdin.isatty()
-    if _tty_mode:
+    if _tty_mode and not IS_WINDOWS:
         _old_tty = termios.tcgetattr(sys.stdin)
         attrs = list(_old_tty)
-        attrs[3] &= ~(termios.ECHO | termios.ICANON)  # no echo, no canonical
+        attrs[3] &= ~(termios.ECHO | termios.ICANON)
         termios.tcsetattr(sys.stdin, termios.TCSANOW, attrs)
 
     def _handle_keypress():
         nonlocal paused
-        try:
-            key = sys.stdin.read(1)
-        except (EOFError, OSError):
-            return
+        if IS_WINDOWS:
+            key = msvcrt.getch().decode("utf-8", errors="replace")
+        else:
+            try:
+                key = sys.stdin.read(1)
+            except (EOFError, OSError):
+                return
         if key == " ":  # space bar toggles pause/resume
             if not paused:
                 paused = True
@@ -68,8 +76,8 @@ def run_session(label: str, duration_minutes: float, dim: bool = False) -> None:
                 mm = remaining // 60
                 ss = remaining % 60
                 print(f"\r{label}: {mm:02d}:{ss:02d} remaining", end="", flush=True)
-        # Drain any remaining buffered input
-        if _tty_mode:
+        # Drain remaining buffered input (Unix only; msvcrt drains implicitly)
+        if _tty_mode and not IS_WINDOWS:
             try:
                 while True:
                     r, _, _ = select.select([sys.stdin], [], [], 0)
@@ -89,7 +97,10 @@ def run_session(label: str, duration_minutes: float, dim: bool = False) -> None:
             left = deadline - time.monotonic()
             if left <= 0:
                 return
-            if _tty_mode:
+            if IS_WINDOWS:
+                if msvcrt.kbhit():
+                    _handle_keypress()
+            elif _tty_mode:
                 try:
                     ready, _, _ = select.select([sys.stdin], [], [], left)
                 except (ValueError, OSError):
@@ -127,7 +138,7 @@ def run_session(label: str, duration_minutes: float, dim: bool = False) -> None:
         print(f"Session complete! {label} — {duration_minutes:g} min.")
     finally:
         signal.signal(signal.SIGINT, old_sigint)
-        # Restore terminal and flush stale keystrokes
+        # Restore terminal (Unix only; Windows has nothing to restore)
         if _old_tty is not None:
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, _old_tty)
             termios.tcdrain(sys.stdin)

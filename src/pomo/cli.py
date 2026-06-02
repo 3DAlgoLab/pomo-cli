@@ -16,6 +16,10 @@ from pomo.timer import run_session
 
 def main(argv=None):
     """Parse arguments and dispatch to the appropriate session runner."""
+    # Force UTF-8 output on Windows (default cp949/cp1252 breaks emoji)
+    if sys.platform == "win32":
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(
         prog="pomo", description="SSH-friendly CLI pomodoro timer"
     )
