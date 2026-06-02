@@ -5,6 +5,7 @@ import sys
 
 try:
     from importlib.metadata import version
+
     __version__ = version("pomo")
 except Exception:
     __version__ = "unknown"
@@ -18,8 +19,8 @@ def main(argv=None):
     """Parse arguments and dispatch to the appropriate session runner."""
     # Force UTF-8 output on Windows (default cp949/cp1252 breaks emoji)
     if sys.platform == "win32":
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore
+        sys.stderr.reconfigure(encoding="utf-8")  # type: ignore
     parser = argparse.ArgumentParser(
         prog="pomo", description="SSH-friendly CLI pomodoro timer"
     )
@@ -38,16 +39,12 @@ def main(argv=None):
         "--minutes", type=float, default=None, help="Override duration"
     )
 
-    long_break_parser = subparsers.add_parser(
-        "long-break", help="Run a long break"
-    )
+    long_break_parser = subparsers.add_parser("long-break", help="Run a long break")
     long_break_parser.add_argument(
         "--minutes", type=float, default=None, help="Override duration"
     )
 
-    cycle_parser = subparsers.add_parser(
-        "cycle", help="Run full pomodoro cycle"
-    )
+    cycle_parser = subparsers.add_parser("cycle", help="Run full pomodoro cycle")
     cycle_parser.add_argument(
         "--minutes", type=float, default=None, help="Override work/break durations"
     )
@@ -58,6 +55,7 @@ def main(argv=None):
     def error_with_stdout(message):
         parser.print_help(sys.stdout)
         sys.exit(2)
+
     parser.error = error_with_stdout
 
     args = parser.parse_args(argv)
@@ -88,28 +86,24 @@ def main(argv=None):
     elif args.command == "cycle":
         n = cfg.sessions_before_long
         work_dur = args.minutes if args.minutes is not None else cfg.work
-        short_dur = (
-            args.minutes if args.minutes is not None else cfg.short_break
-        )
+        short_dur = args.minutes if args.minutes is not None else cfg.short_break
         long_dur = args.minutes if args.minutes is not None else cfg.long_break
 
         for i in range(n):
             print_banner(i + 1)
             print()
-            run_session(label=f"Work session {i + 1}", duration_minutes=work_dur, dim=False)
+            run_session(
+                label=f"Work session {i + 1}", duration_minutes=work_dur, dim=False
+            )
             if i < n - 1:
-                run_session(
-                    label="Short break", duration_minutes=short_dur, dim=True
-                )
+                run_session(label="Short break", duration_minutes=short_dur, dim=True)
         run_session(label="Long break", duration_minutes=long_dur, dim=True)
 
     elif args.command == "config":
         print(f"work: {cfg.work} min")
         print(f"short_break: {cfg.short_break} min")
         print(f"long_break: {cfg.long_break} min")
-        print(
-            f"sessions_before_long: {cfg.sessions_before_long}"
-        )
+        print(f"sessions_before_long: {cfg.sessions_before_long}")
 
     else:
         parser.print_help()
