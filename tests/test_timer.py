@@ -5,8 +5,9 @@ SIGINT handling, and edge-case durations.
 """
 
 import signal
+import sys
 import termios
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 
 # ── imports under test ────────────────────────────────────────────────
@@ -161,6 +162,88 @@ def test_session_disables_echo():
     # Second call should restore original attrs (ECHO back on)
     second_args = tcsetattr_called[1][2]
     assert second_args == fake_attrs, "Original attrs should be restored"
+
+
+# ── Space-bar pause/resume ────────────────────────────────────────────
+
+FAKE_TTY_ATTRS = [0, 0, 0, termios.ECHO | termios.ICANON]
+
+def test_space_pause_and_resume(capsys):
+    """Space bar toggles pause/resume; timer stops counting while paused."""
+    select_count = [0]
+    read_count = [0]
+    fake_time = [0.0]
+
+    def fake_select(rlist, *_args):
+        select_count[0] += 1
+        fake_time[0] += 1.0
+        # Key press on tick 3 (pause) and tick 5 (resume)
+        if select_count[0] in (3, 5):
+            return [rlist[0]], [], []
+        return [], [], []
+
+    def fake_read(n):
+        read_count[0] += 1
+        return " "
+
+    with patch.object(sys.stdin, "isatty", return_value=True):
+        with patch("sys.stdout.isatty", return_value=False):
+            with patch("termios.tcgetattr", return_value=FAKE_TTY_ATTRS):
+                with patch("termios.tcsetattr"):
+                    with patch("termios.tcdrain"):
+                        with patch("pomo.timer.select.select", side_effect=fake_select):
+                            with patch("pomo.timer.time.monotonic", side_effect=lambda: fake_time[0]):
+                                with patch.object(sys.stdin, "read", side_effect=fake_read):
+                                    run_session(label="Work session", duration_minutes=0.1)
+
+    out = capsys.readouterr().out
+    assert "[Paused]" in out
+    assert "Work session" in out  # resumed countdown shows label
+
+
+def test_space_pause_freezes_countdown():
+    """While paused, remaining should not decrease; select calls accumulate."""
+    select_count = [0]
+    fake_time = [0.0]
+
+    def fake_select(rlist, *_args):
+        select_count[0] += 1
+        fake_time[0] += 1.0
+        # Pause on select #3, resume on select #8
+        if select_count[0] in (3, 8):
+            return [rlist[0]], [], []
+        return [], [], []
+
+    def fake_read(n):
+        return " "
+
+    with patch.object(sys.stdin, "isatty", return_value=True):
+        with patch("sys.stdout.isatty", return_value=False):
+            with patch("termios.tcgetattr", return_value=FAKE_TTY_ATTRS):
+                with patch("termios.tcsetattr"):
+                    with patch("termios.tcdrain"):
+                        with patch("pomo.timer.select.select", side_effect=fake_select):
+                            with patch("pomo.timer.time.monotonic", side_effect=lambda: fake_time[0]):
+                                with patch.object(sys.stdin, "read", side_effect=fake_read):
+                                    run_session(label="Work session", duration_minutes=0.1)  # 6 seconds
+
+    # 6 normal ticks + 4 paused ticks (selects 4-7) + resume = 10+ select calls
+    assert select_count[0] > 6
+
+
+def test_non_tty_mode_runs_without_select():
+    """When stdin is not a TTY, timer uses plain time.sleep (no select)."""
+    sleep_calls = []
+
+    def fake_sleep(duration):
+        sleep_calls.append(duration)
+
+    with patch("pomo.timer.select.select", side_effect=Exception("should not be called")):
+        with patch("pomo.timer.time.sleep", side_effect=fake_sleep):
+            with patch("sys.stdin.isatty", return_value=False):
+                run_session(label="Work session", duration_minutes=0.05)  # 3 seconds
+
+    assert len(sleep_calls) == 3
 
 
 
