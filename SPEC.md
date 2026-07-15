@@ -34,7 +34,7 @@ A minimal, SSH-friendly CLI pomodoro timer. Single-line countdown with `\r`, aud
 
 ### Config File
 
-Location: `~/.config/pomo-cli2/config.toml`
+Location: `~/.pomo/config.toml` (auto-created with defaults on first run if missing)
 
 ```toml
 [session]

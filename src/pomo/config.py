@@ -16,6 +16,16 @@ class Config:
         "long_break": 15,
         "sessions_before_long": 4,
     }
+    DEFAULT_CONFIG_TOML = """\
+# pomo configuration — all values are in minutes.
+# Edit and save; changes apply on the next run.
+
+[session]
+work = 25                  # work session duration (min)
+short_break = 5            # short break duration (min)
+long_break = 15            # long break duration (min)
+sessions_before_long = 4   # pomodoros before a long break
+"""
 
     def __init__(self, config_path=None, cli_overrides=None):
         # Start with defaults
@@ -23,9 +33,16 @@ class Config:
 
         # Load from TOML file (overrides defaults)
         if config_path is None:
-            config_path = Path.home() / ".config" / "pomo-cli2" / "config.toml"
+            config_path = Path.home() / ".pomo" / "config.toml"
         else:
             config_path = Path(config_path)
+        # Auto-create a default config file on first run if it's missing
+        if not config_path.exists():
+            try:
+                config_path.parent.mkdir(parents=True, exist_ok=True)
+                config_path.write_text(self.DEFAULT_CONFIG_TOML, encoding="utf-8")
+            except OSError:
+                pass  # can't write (e.g. no permission); use in-memory defaults
 
         try:
             with open(config_path, "rb") as f:

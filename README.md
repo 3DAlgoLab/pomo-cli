@@ -10,7 +10,7 @@ carriage-return countdowns that work over any connection.
 - **Classic pomodoro flow** — 25m work / 5m break / 15m long break (all configurable)
 - **SSH-friendly** — single-line `\r` countdown, works in tmux/screen/remote SSH
 - **Full cycle automation** — `pomo cycle` runs 4 pomodoros with breaks automatically
-- **Configurable** — TOML config file at `~/.config/pomo-cli2/config.toml`, CLI overrides
+- **Configurable** — TOML config file at `~/.pomo/config.toml`, CLI overrides
 - **Zero heavy deps** — stdlib argparse + tomllib, pytest for tests
 
 ## Quick Start
@@ -52,7 +52,7 @@ pomo long-break --minutes 30 # 30-min long break
 
 ### Configuration
 
-Create `~/.config/pomo-cli2/config.toml`:
+Create `~/.pomo/config.toml` (it is written automatically with these defaults on first run if missing):
 
 ```toml
 [session]

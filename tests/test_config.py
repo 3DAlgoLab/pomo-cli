@@ -36,14 +36,9 @@ work = 40
 
 # ── case 1: Load defaults when no config file exists ─────────────────
 
-def test_defaults_when_no_config_file(tmp_path, monkeypatch):
-    """Case 1 — defaults returned when ~/.config/pomo-cli2/config.toml is absent."""
-    # Place a fresh home dir with no pomo-cli2 folder
-    fake_home = tmp_path / "home"
-    fake_home.mkdir()
-    monkeypatch.setenv("HOME", str(fake_home))
-
-    cfg = Config(config_path=None)
+def test_defaults_when_no_config_file(tmp_path):
+    """Case 1 — defaults returned when the config file is absent."""
+    cfg = Config(config_path=str(tmp_path / "absent.toml"))
     assert cfg.work == DEFAULT_CONFIG["work"]
     assert cfg.short_break == DEFAULT_CONFIG["short_break"]
     assert cfg.long_break == DEFAULT_CONFIG["long_break"]
@@ -156,3 +151,24 @@ def test_malformed_toml_falls_back_to_defaults(tmp_path):
     assert cfg.short_break == DEFAULT_CONFIG["short_break"]
     assert cfg.long_break == DEFAULT_CONFIG["long_break"]
     assert cfg.sessions_before_long == DEFAULT_CONFIG["sessions_before_long"]
+
+
+# ── case 9: Missing config file is auto-created with defaults ─────────
+
+def test_missing_config_auto_created(tmp_path):
+    """Case 9 — first run writes a default config.toml and loads it."""
+    cfg_path = tmp_path / ".pomo" / "config.toml"
+    assert not cfg_path.exists()
+
+    Config(config_path=str(cfg_path))
+
+    # File now exists at the given location
+    assert cfg_path.exists()
+    assert "[session]" in cfg_path.read_text(encoding="utf-8")
+
+    # Re-parsing the written file yields the same defaults
+    reloaded = Config(config_path=str(cfg_path))
+    assert reloaded.work == DEFAULT_CONFIG["work"]
+    assert reloaded.short_break == DEFAULT_CONFIG["short_break"]
+    assert reloaded.long_break == DEFAULT_CONFIG["long_break"]
+    assert reloaded.sessions_before_long == DEFAULT_CONFIG["sessions_before_long"]
