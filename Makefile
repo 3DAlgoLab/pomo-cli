@@ -1,4 +1,4 @@
-.PHONY: lint test install
+.PHONY: lint test install uninstall
 
 lint:
 	uv run ruff check src/ tests/
@@ -8,3 +8,6 @@ test:
 
 install:
 	uv tool install .
+
+uninstall:
+	uv tool uninstall pomo
