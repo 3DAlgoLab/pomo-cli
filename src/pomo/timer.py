@@ -124,8 +124,8 @@ def run_session(label: str, duration_minutes: float, dim: bool = False) -> None:
                 elapsed += 1
                 remaining -= 1
 
-                # Milestone: every 5 minutes elapsed
-                if remaining > 0 and remaining % 300 == 0:
+                # Milestone: every 10 minutes elapsed
+                if remaining > 0 and remaining % 600 == 0:
                     msg = f"[Milestone] {remaining // 60} minutes remaining"
                     print(f"\n{_dim(msg)}")
             else:

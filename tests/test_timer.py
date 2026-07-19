@@ -41,17 +41,17 @@ def test_display_updates_with_carriage_return(capsys):
     assert "\r" in out, f"Expected \\r in output, got: {repr(out)}"
 
 
-# ── case 10: Milestone messages every 5 minutes elapsed ─────────────
+# ── case 10: Milestone messages every 10 minutes elapsed ────────────
 
-def test_milestone_messages_every_5_minutes(capsys):
-    """Case 10 — milestone printed when remaining is a multiple of 5 min."""
+def test_milestone_messages_every_10_minutes(capsys):
+    """Case 10 — milestone printed when remaining is a multiple of 10 min."""
     with patch("pomo.timer.time.sleep", return_value=None):
-        run_session(label="Work session", duration_minutes=12)
+        run_session(label="Work session", duration_minutes=25)
 
     out = capsys.readouterr().out
     assert "[Milestone]" in out
+    assert "20 minutes remaining" in out
     assert "10 minutes remaining" in out
-    assert "5 minutes remaining" in out
 
 
 # ── case 11: Session end prints bell + summary ───────────────────────
