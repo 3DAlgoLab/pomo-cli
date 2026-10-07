@@ -15,6 +15,7 @@ class Config:
         "short_break": 5,
         "long_break": 15,
         "sessions_before_long": 4,
+        "rounds": 2,
     }
     DEFAULT_CONFIG_TOML = """\
 # pomo configuration — all values are in minutes.
@@ -25,6 +26,7 @@ work = 25                  # work session duration (min)
 short_break = 5            # short break duration (min)
 long_break = 15            # long break duration (min)
 sessions_before_long = 4   # pomodoros before a long break
+rounds = 2                # macro-cycles per `pomo cycle` (long break between rounds)
 """
 
     def __init__(self, config_path=None, cli_overrides=None):
@@ -75,3 +77,8 @@ sessions_before_long = 4   # pomodoros before a long break
             self.sessions_before_long = int(values["sessions_before_long"])
         except (ValueError, TypeError):
             self.sessions_before_long = self.DEFAULTS["sessions_before_long"]
+
+        try:
+            self.rounds = int(values["rounds"])
+        except (ValueError, TypeError):
+            self.rounds = self.DEFAULTS["rounds"]

@@ -48,6 +48,12 @@ def main(argv=None):
     cycle_parser.add_argument(
         "--minutes", type=float, default=None, help="Override work/break durations"
     )
+    cycle_parser.add_argument(
+        "--rounds",
+        type=int,
+        default=None,
+        help="Number of macro-cycles; long break separates rounds (default: config rounds)",
+    )
 
     subparsers.add_parser("config", help="Print effective configuration")
 
@@ -85,25 +91,36 @@ def main(argv=None):
 
     elif args.command == "cycle":
         n = cfg.sessions_before_long
+        rounds = args.rounds if args.rounds is not None else cfg.rounds
+        if rounds < 1:
+            parser.error(f"--rounds must be >= 1, got {rounds}")
         work_dur = args.minutes if args.minutes is not None else cfg.work
         short_dur = args.minutes if args.minutes is not None else cfg.short_break
         long_dur = args.minutes if args.minutes is not None else cfg.long_break
 
-        for i in range(n):
-            print_banner(i + 1)
-            print()
-            run_session(
-                label=f"Work session {i + 1}", duration_minutes=work_dur, dim=False
-            )
-            if i < n - 1:
-                run_session(label="Short break", duration_minutes=short_dur, dim=True)
-        run_session(label="Long break", duration_minutes=long_dur, dim=True)
+        for r in range(rounds):
+            for i in range(n):
+                print_banner(r * n + i + 1)
+                print()
+                run_session(
+                    label=f"Work session {r * n + i + 1}",
+                    duration_minutes=work_dur,
+                    dim=False,
+                )
+                if i < n - 1:
+                    run_session(
+                        label="Short break", duration_minutes=short_dur, dim=True
+                    )
+            # The long break only separates rounds; resting right before exit is dead weight.
+            if r < rounds - 1:
+                run_session(label="Long break", duration_minutes=long_dur, dim=True)
 
     elif args.command == "config":
         print(f"work: {cfg.work} min")
         print(f"short_break: {cfg.short_break} min")
         print(f"long_break: {cfg.long_break} min")
         print(f"sessions_before_long: {cfg.sessions_before_long}")
+        print(f"rounds: {cfg.rounds}")
 
     else:
         parser.print_help()

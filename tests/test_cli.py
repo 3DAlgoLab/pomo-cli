@@ -81,16 +81,67 @@ def test_cycle_runs_full_pomodoro_sequence(monkeypatch):
 
     main(["cycle"])
 
-    # Default: 4 sessions_before_long → 4 works, 3 short breaks, 1 long break
-    assert run_mock.call_count == 8  # 4 + 3 + 1
+    # Default: 2 rounds of 4 sessions → 8 works, 6 short breaks, 1 long break
+    # (the long break separates rounds; none follows the final round)
+    assert run_mock.call_count == 15  # 2 * (4 + 3) + 1
     durations = [c[1]["duration_minutes"] for c in run_mock.call_args_list]
-    expected = [25, 5, 25, 5, 25, 5, 25, 15]
+    expected = [25, 5, 25, 5, 25, 5, 25, 15, 25, 5, 25, 5, 25, 5, 25]
     assert durations == expected
 
     # Breaks should have dim=True, work sessions dim=False
     dims = [c[1]["dim"] for c in run_mock.call_args_list]
-    expected_dims = [False, True, False, True, False, True, False, True]
+    expected_dims = [False, True] * 7 + [False]
     assert dims == expected_dims
+
+
+# ── rounds: the long break only separates rounds ────────────────────
+
+def test_cycle_single_round_has_no_long_break(monkeypatch):
+    """--rounds 1 ends on the last work session; no rest before exit."""
+    run_mock = MagicMock()
+    monkeypatch.setattr("pomo.cli.run_session", run_mock)
+
+    main(["cycle", "--rounds", "1"])
+
+    durations = [c[1]["duration_minutes"] for c in run_mock.call_args_list]
+    assert durations == [25, 5, 25, 5, 25, 5, 25]
+    labels = [c[1]["label"] for c in run_mock.call_args_list]
+    assert "Long break" not in labels
+
+
+def test_cycle_rounds_from_config_file(tmp_path, monkeypatch):
+    """rounds in config.toml drives the cycle length."""
+    run_mock = MagicMock()
+    monkeypatch.setattr("pomo.cli.run_session", run_mock)
+    cfg_path = tmp_path / "cfg.toml"
+    cfg_path.write_text("[session]\nrounds = 3\n", encoding="utf-8")
+
+    main(["--config", str(cfg_path), "cycle"])
+
+    # 3 rounds of 4 sessions + 2 separating long breaks
+    assert run_mock.call_count == 23
+    labels = [c[1]["label"] for c in run_mock.call_args_list]
+    assert labels.count("Long break") == 2
+
+
+def test_cycle_banner_matches_work_session_number(monkeypatch):
+    """The tomato count tracks the global work session number, not round position."""
+    monkeypatch.setattr("pomo.cli.run_session", MagicMock())
+    banners = []
+    monkeypatch.setattr("pomo.cli.print_banner", lambda n=1: banners.append(n))
+
+    main(["cycle"])
+
+    assert banners == [1, 2, 3, 4, 5, 6, 7, 8]
+
+
+def test_cycle_rejects_nonpositive_rounds(capsys):
+    """--rounds 0 is a usage error, not a silent no-op."""
+    with pytest.raises(SystemExit) as exc_info:
+        main(["cycle", "--rounds", "0"])
+
+    assert exc_info.value.code != 0
+    assert "usage" in capsys.readouterr().out.lower()
 
 
 # ── case 20: `pomo config` prints effective configuration ────────────
