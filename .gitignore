@@ -10,3 +10,4 @@ wheels/
 .venv
 LocalMem.md
 uv.lock
+.pi/
