@@ -18,6 +18,7 @@ DEFAULT_CONFIG = {
     "short_break": 5,
     "long_break": 15,
     "sessions_before_long": 4,
+    "rounds": 2,
 }
 
 FULL_TOML = dedent("""\
