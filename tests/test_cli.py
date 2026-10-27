@@ -11,7 +11,6 @@ import pytest
 # ── imports under test ────────────────────────────────────────────────
 from pomo.cli import main
 
-
 # ── case 15: `pomo work` invokes timer with correct duration ─────────
 
 def test_work_uses_config_duration(monkeypatch):

@@ -2,12 +2,11 @@
 
 import argparse
 import sys
+from importlib.metadata import PackageNotFoundError, version
 
 try:
-    from importlib.metadata import version
-
     __version__ = version("pomo")
-except Exception:
+except PackageNotFoundError:
     __version__ = "unknown"
 
 from pomo.art import print_banner

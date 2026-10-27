@@ -6,10 +6,8 @@ custom paths, and graceful error handling.
 
 from textwrap import dedent
 
-
 # ── imports under test ────────────────────────────────────────────────
 from pomo.config import Config
-
 
 # ── helpers ───────────────────────────────────────────────────────────
 

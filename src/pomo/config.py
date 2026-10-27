@@ -2,6 +2,7 @@
 
 import tomllib
 from pathlib import Path
+from typing import ClassVar
 
 
 class Config:
@@ -10,7 +11,7 @@ class Config:
     Priority (lowest to highest): defaults, config file values, CLI overrides.
     """
 
-    DEFAULTS = {
+    DEFAULTS: ClassVar[dict[str, int]] = {
         "work": 25,
         "short_break": 5,
         "long_break": 15,
