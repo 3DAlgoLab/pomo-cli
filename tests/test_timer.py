@@ -2,16 +2,24 @@
 
 Verifies countdown duration, display format, milestones, session-end output,
 SIGINT handling, and edge-case durations.
+
+Terminal-input tests rely on POSIX termios/select internals and are skipped
+on Windows, where pomo.timer drives input through msvcrt instead.
 """
 
 import signal
 import sys
-import termios
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
+import pytest
 
 # ── imports under test ────────────────────────────────────────────────
 from pomo.timer import run_session
+
+posix_only = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="relies on POSIX termios/select internals (msvcrt on Windows)",
+)
 
 
 # ── case 8: Countdown runs for correct duration ──────────────────────
@@ -38,7 +46,7 @@ def test_display_updates_with_carriage_return(capsys):
         run_session(label="Work session", duration_minutes=0.05)  # ~3 seconds
 
     out = capsys.readouterr().out
-    assert "\r" in out, f"Expected \\r in output, got: {repr(out)}"
+    assert "\r" in out, f"Expected \\r in output, got: {out!r}"
 
 
 # ── case 10: Milestone messages every 10 minutes elapsed ────────────
@@ -118,27 +126,34 @@ def test_one_minute_session():
 
 def test_break_session_applies_dim(capsys):
     """Case 15 — dim=True wraps countdown in ANSI dim codes."""
-    with patch("pomo.timer.time.sleep", return_value=None):
-        with patch("sys.stdout.isatty", return_value=True):
-            run_session(label="Short break", duration_minutes=0.05, dim=True)
+    with (
+        patch("pomo.timer.time.sleep", return_value=None),
+        patch("sys.stdout.isatty", return_value=True),
+    ):
+        run_session(label="Short break", duration_minutes=0.05, dim=True)
 
     out = capsys.readouterr().out
     # ANSI dim code is \033[2m
-    assert "\033[2m" in out, f"Expected dim escape in output, got: {repr(out)}"
+    assert "\033[2m" in out, f"Expected dim escape in output, got: {out!r}"
 
 
 def test_work_session_no_dim(capsys):
     """Work sessions (dim=False, default) should not have ANSI dim codes."""
-    with patch("pomo.timer.time.sleep", return_value=None):
-        with patch("sys.stdout.isatty", return_value=True):
-            run_session(label="Work session", duration_minutes=0.05)
+    with (
+        patch("pomo.timer.time.sleep", return_value=None),
+        patch("sys.stdout.isatty", return_value=True),
+    ):
+        run_session(label="Work session", duration_minutes=0.05)
 
     out = capsys.readouterr().out
-    assert "\033[2m" not in out, f"Unexpected dim escape in work output: {repr(out)}"
+    assert "\033[2m" not in out, f"Unexpected dim escape in work output: {out!r}"
 
 
+@posix_only
 def test_session_disables_echo():
     """Session should disable terminal echo to suppress key clutter."""
+    import termios
+
     tcsetattr_called = []
 
     def fake_tcsetattr(fd, when, args):
@@ -147,15 +162,19 @@ def test_session_disables_echo():
     # Simulate a real TTY with ECHO enabled (LFLAG index 3)
     fake_attrs = [0, 0, 0, termios.ECHO]
 
-    with patch("pomo.timer.time.sleep", return_value=None):
-        with patch("sys.stdin.isatty", return_value=True):
-            with patch("termios.tcsetattr", side_effect=fake_tcsetattr):
-                with patch("termios.tcgetattr", return_value=fake_attrs):
-                    with patch("termios.tcdrain"):
-                        run_session(label="Work session", duration_minutes=0.05)
+    with (
+        patch("pomo.timer.time.sleep", return_value=None),
+        patch("sys.stdin.isatty", return_value=True),
+        patch("termios.tcsetattr", side_effect=fake_tcsetattr),
+        patch("termios.tcgetattr", return_value=fake_attrs),
+        patch("termios.tcdrain"),
+    ):
+        run_session(label="Work session", duration_minutes=0.05)
 
     # tcsetattr: once to disable ECHO, once at end to restore
-    assert len(tcsetattr_called) == 2, f"Expected 2 tcsetattr calls, got {len(tcsetattr_called)}"
+    assert len(tcsetattr_called) == 2, (
+        f"Expected 2 tcsetattr calls, got {len(tcsetattr_called)}"
+    )
     # First call should have ECHO cleared
     first_args = tcsetattr_called[0][2]
     assert not (first_args[3] & termios.ECHO), "ECHO should be disabled"
@@ -166,10 +185,12 @@ def test_session_disables_echo():
 
 # ── Space-bar pause/resume ────────────────────────────────────────────
 
-FAKE_TTY_ATTRS = [0, 0, 0, termios.ECHO | termios.ICANON]
-
+@posix_only
 def test_space_pause_and_resume(capsys):
     """Space bar toggles pause/resume; timer stops counting while paused."""
+    import termios
+
+    fake_tty_attrs = [0, 0, 0, termios.ECHO | termios.ICANON]
     select_count = [0]
     read_count = [0]
     fake_time = [0.0]
@@ -186,23 +207,29 @@ def test_space_pause_and_resume(capsys):
         read_count[0] += 1
         return " "
 
-    with patch.object(sys.stdin, "isatty", return_value=True):
-        with patch("sys.stdout.isatty", return_value=False):
-            with patch("termios.tcgetattr", return_value=FAKE_TTY_ATTRS):
-                with patch("termios.tcsetattr"):
-                    with patch("termios.tcdrain"):
-                        with patch("pomo.timer.select.select", side_effect=fake_select):
-                            with patch("pomo.timer.time.monotonic", side_effect=lambda: fake_time[0]):
-                                with patch.object(sys.stdin, "read", side_effect=fake_read):
-                                    run_session(label="Work session", duration_minutes=0.1)
+    with (
+        patch.object(sys.stdin, "isatty", return_value=True),
+        patch("sys.stdout.isatty", return_value=False),
+        patch("termios.tcgetattr", return_value=fake_tty_attrs),
+        patch("termios.tcsetattr"),
+        patch("termios.tcdrain"),
+        patch("pomo.timer.select.select", side_effect=fake_select),
+        patch("pomo.timer.time.monotonic", side_effect=lambda: fake_time[0]),
+        patch.object(sys.stdin, "read", side_effect=fake_read),
+    ):
+        run_session(label="Work session", duration_minutes=0.1)
 
     out = capsys.readouterr().out
     assert "[Paused]" in out
     assert "Work session" in out  # resumed countdown shows label
 
 
+@posix_only
 def test_space_pause_freezes_countdown():
     """While paused, remaining should not decrease; select calls accumulate."""
+    import termios
+
+    fake_tty_attrs = [0, 0, 0, termios.ECHO | termios.ICANON]
     select_count = [0]
     fake_time = [0.0]
 
@@ -217,20 +244,23 @@ def test_space_pause_freezes_countdown():
     def fake_read(n):
         return " "
 
-    with patch.object(sys.stdin, "isatty", return_value=True):
-        with patch("sys.stdout.isatty", return_value=False):
-            with patch("termios.tcgetattr", return_value=FAKE_TTY_ATTRS):
-                with patch("termios.tcsetattr"):
-                    with patch("termios.tcdrain"):
-                        with patch("pomo.timer.select.select", side_effect=fake_select):
-                            with patch("pomo.timer.time.monotonic", side_effect=lambda: fake_time[0]):
-                                with patch.object(sys.stdin, "read", side_effect=fake_read):
-                                    run_session(label="Work session", duration_minutes=0.1)  # 6 seconds
+    with (
+        patch.object(sys.stdin, "isatty", return_value=True),
+        patch("sys.stdout.isatty", return_value=False),
+        patch("termios.tcgetattr", return_value=fake_tty_attrs),
+        patch("termios.tcsetattr"),
+        patch("termios.tcdrain"),
+        patch("pomo.timer.select.select", side_effect=fake_select),
+        patch("pomo.timer.time.monotonic", side_effect=lambda: fake_time[0]),
+        patch.object(sys.stdin, "read", side_effect=fake_read),
+    ):
+        run_session(label="Work session", duration_minutes=0.1)  # 6 seconds
 
     # 6 normal ticks + 4 paused ticks (selects 4-7) + resume = 10+ select calls
     assert select_count[0] > 6
 
 
+@posix_only
 def test_non_tty_mode_runs_without_select():
     """When stdin is not a TTY, timer uses plain time.sleep (no select)."""
     sleep_calls = []
@@ -238,13 +268,11 @@ def test_non_tty_mode_runs_without_select():
     def fake_sleep(duration):
         sleep_calls.append(duration)
 
-    with patch("pomo.timer.select.select", side_effect=Exception("should not be called")):
-        with patch("pomo.timer.time.sleep", side_effect=fake_sleep):
-            with patch("sys.stdin.isatty", return_value=False):
-                run_session(label="Work session", duration_minutes=0.05)  # 3 seconds
+    with (
+        patch("pomo.timer.select.select", side_effect=Exception("should not be called")),
+        patch("pomo.timer.time.sleep", side_effect=fake_sleep),
+        patch("sys.stdin.isatty", return_value=False),
+    ):
+        run_session(label="Work session", duration_minutes=0.05)  # 3 seconds
 
     assert len(sleep_calls) == 3
-
-
-
-

@@ -98,8 +98,15 @@ def run_session(label: str, duration_minutes: float, dim: bool = False) -> None:
             if left <= 0:
                 return
             if IS_WINDOWS:
+                # Poll the console only when a real TTY backs stdin; under
+                # captured or piped streams (tests, pipes) fall back to sleep.
+                if not _tty_mode:
+                    time.sleep(left)
+                    return
                 if msvcrt.kbhit():
                     _handle_keypress()
+                else:
+                    time.sleep(min(left, 0.05))  # avoid 100% CPU busy-spin
             elif _tty_mode:
                 try:
                     ready, _, _ = select.select([sys.stdin], [], [], left)
